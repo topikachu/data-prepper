@@ -26,6 +26,7 @@ import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.model.log.JacksonOtelLog;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
@@ -147,6 +148,16 @@ public class OTelProtoCodec {
     }
 
     public static class OTelProtoDecoder {
+        private boolean recursiveJsonDisabled;
+
+        public OTelProtoDecoder() {
+            this(false);
+        }
+
+        public OTelProtoDecoder(boolean recursiveJsonDisabled) {
+            this.recursiveJsonDisabled = recursiveJsonDisabled;
+        }
+
         public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
             return exportTraceServiceRequest.getResourceSpansList().stream()
                     .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
@@ -254,7 +265,7 @@ public class OTelProtoCodec {
                             .withSeverityNumber(log.getSeverityNumberValue())
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
-                            .withBody(OTelProtoCodec.convertAnyValue(log.getBody()))
+                            .withBody(OTelProtoCodec.convertAnyValue(log.getBody(), recursiveJsonDisabled))
                             .build())
                     .collect(Collectors.toList());
         }
@@ -621,13 +632,17 @@ public class OTelProtoCodec {
         }
     }
 
+    public static Object convertAnyValue(final AnyValue value) {
+        return convertAnyValue(value, false);
+    }
     /**
      * Converts an {@link AnyValue} into its appropriate data type
      *
      * @param value The value to convert
+     * @param recursiveJsonDisabled is ture (disabled), then fuction returns a regular json string. Otherwise,
      * @return the converted value as object
      */
-    public static Object convertAnyValue(final AnyValue value) {
+    public static Object convertAnyValue(final AnyValue value, boolean recursiveJsonDisabled) {
         switch (value.getValueCase()) {
             case VALUE_NOT_SET:
             case STRING_VALUE:
@@ -645,22 +660,58 @@ public class OTelProtoCodec {
              */
             case ARRAY_VALUE:
                 try {
-                    return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
-                            .map(OTelProtoCodec::convertAnyValue)
-                            .collect(Collectors.toList()));
+                    if (!recursiveJsonDisabled) {
+                        return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
+                                .map(OTelProtoCodec::convertAnyValue)
+                                .collect(Collectors.toList()));
+                    } else {
+                        return OBJECT_MAPPER.writeValueAsString(asPlanObject(value));
+                    }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
             case KVLIST_VALUE:
                 try {
-                    return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
-                            .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()))));
+                    if (!recursiveJsonDisabled) {
+                        return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
+                                .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()))));
+                    } else {
+                        return OBJECT_MAPPER.writeValueAsString(asPlanObject(value));
+
+                    }
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
             default:
                 throw new RuntimeException(String.format("Can not convert AnyValue of type %s", value.getValueCase()));
         }
+    }
+
+    private static Object asPlanObject(AnyValue anyValue){
+        switch (anyValue.getValueCase()) {
+            case VALUE_NOT_SET:
+            case STRING_VALUE:
+                return anyValue.getStringValue();
+            case BOOL_VALUE:
+                return anyValue.getBoolValue();
+            case INT_VALUE:
+                return anyValue.getIntValue();
+            case DOUBLE_VALUE:
+                return anyValue.getDoubleValue();
+            case ARRAY_VALUE:
+                return anyValue.getArrayValue().getValuesList()
+                        .stream()
+                        .map(OTelProtoCodec::asPlanObject)
+                        .collect(Collectors.toList());
+            case KVLIST_VALUE:
+                return anyValue.getKvlistValue().getValuesList()
+                        .stream()
+                        .map(
+                                keyValue -> Pair.of(keyValue.getKey(), asPlanObject(keyValue.getValue()))
+                        )
+                        .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), Pair::getValue));
+        }
+        return null;
     }
 
     /**

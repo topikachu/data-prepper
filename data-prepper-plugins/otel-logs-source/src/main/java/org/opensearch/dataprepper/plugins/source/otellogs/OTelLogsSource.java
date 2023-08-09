@@ -89,7 +89,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
             final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
                     (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
-                    new OTelProtoCodec.OTelProtoDecoder(),
+                    new OTelProtoCodec.OTelProtoDecoder(oTelLogsSourceConfig.isRecursiveJsonDisabled()),
                     buffer,
                     pluginMetrics
             );
