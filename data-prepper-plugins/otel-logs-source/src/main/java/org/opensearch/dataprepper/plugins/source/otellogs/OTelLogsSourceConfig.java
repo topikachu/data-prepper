@@ -31,7 +31,7 @@ public class OTelLogsSourceConfig {
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String COMPRESSION = "compression";
-    static final String RECURSIVE_JSON_DISABLED  = "recursiveJsonDisabled";
+    static final String KV_LIST_AS_RECURSIVE_JSON = "kvListAsRecursiveJson";
 
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21892;
@@ -42,7 +42,7 @@ public class OTelLogsSourceConfig {
     static final boolean DEFAULT_HEALTH_CHECK = false;
     static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
-    static final boolean DEFAULT_RECURSIVE_JSON_DISABLED = false;
+    static final boolean DEFAULT_KV_LIST_AS_RECURSIVE_JSON = true;
 
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String S3_PREFIX = "s3://";
@@ -104,8 +104,8 @@ public class OTelLogsSourceConfig {
     @JsonProperty(COMPRESSION)
     private CompressionOption compression = CompressionOption.NONE;
 
-    @JsonProperty(RECURSIVE_JSON_DISABLED)
-    private boolean recursiveJsonDisabled = DEFAULT_RECURSIVE_JSON_DISABLED;
+    @JsonProperty(KV_LIST_AS_RECURSIVE_JSON)
+    private boolean kvListAsRecursiveJson = DEFAULT_KV_LIST_AS_RECURSIVE_JSON;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -217,8 +217,8 @@ public class OTelLogsSourceConfig {
         return compression;
     }
 
-    public boolean isRecursiveJsonDisabled() {
-        return recursiveJsonDisabled;
+    public boolean isKvListAsRecursiveJson() {
+        return kvListAsRecursiveJson;
     }
 }
 

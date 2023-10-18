@@ -148,14 +148,14 @@ public class OTelProtoCodec {
     }
 
     public static class OTelProtoDecoder {
-        private boolean recursiveJsonDisabled;
+        private boolean kvListAsRecursiveJson;
 
         public OTelProtoDecoder() {
-            this(false);
+            this(true);
         }
 
-        public OTelProtoDecoder(boolean recursiveJsonDisabled) {
-            this.recursiveJsonDisabled = recursiveJsonDisabled;
+        public OTelProtoDecoder(boolean kvListAsRecursiveJson) {
+            this.kvListAsRecursiveJson = kvListAsRecursiveJson;
         }
 
         public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
@@ -265,7 +265,7 @@ public class OTelProtoCodec {
                             .withSeverityNumber(log.getSeverityNumberValue())
                             .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
-                            .withBody(OTelProtoCodec.convertAnyValue(log.getBody(), recursiveJsonDisabled))
+                            .withBody(OTelProtoCodec.convertAnyValue(log.getBody(), kvListAsRecursiveJson))
                             .build())
                     .collect(Collectors.toList());
         }
@@ -639,10 +639,10 @@ public class OTelProtoCodec {
      * Converts an {@link AnyValue} into its appropriate data type
      *
      * @param value The value to convert
-     * @param recursiveJsonDisabled is ture (disabled), then fuction returns a regular json string. Otherwise,
+     * @parm kvListAsRecursiveJson is ture (disabled), then fuction returns a regular json string. Otherwise,
      * @return the converted value as object
      */
-    public static Object convertAnyValue(final AnyValue value, boolean recursiveJsonDisabled) {
+    public static Object convertAnyValue(final AnyValue value, boolean kvListAsRecursiveJson) {
         switch (value.getValueCase()) {
             case VALUE_NOT_SET:
             case STRING_VALUE:
@@ -660,7 +660,7 @@ public class OTelProtoCodec {
              */
             case ARRAY_VALUE:
                 try {
-                    if (!recursiveJsonDisabled) {
+                    if (kvListAsRecursiveJson) {
                         return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
                                 .map(OTelProtoCodec::convertAnyValue)
                                 .collect(Collectors.toList()));
@@ -672,7 +672,7 @@ public class OTelProtoCodec {
                 }
             case KVLIST_VALUE:
                 try {
-                    if (!recursiveJsonDisabled) {
+                    if (kvListAsRecursiveJson) {
                         return OBJECT_MAPPER.writeValueAsString(value.getKvlistValue().getValuesList().stream()
                                 .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue()))));
                     } else {

@@ -444,7 +444,7 @@ public class OTelProtoCodecTest {
         public void testParseExportComplexLogsServiceRequest_ScopedLogs_RecursiveJsonDisabled() throws IOException {
             final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_COMPLEX_LOGS_JSON_FILE);
 
-            OTelProtoCodec.OTelProtoDecoder decoderRecursiveJsonDisabled = new OTelProtoCodec.OTelProtoDecoder(true);
+            OTelProtoCodec.OTelProtoDecoder decoderRecursiveJsonDisabled = new OTelProtoCodec.OTelProtoDecoder(false);
 
             List<OpenTelemetryLog> logs = decoderRecursiveJsonDisabled.parseExportLogsServiceRequest(exportLogsServiceRequest);
 
